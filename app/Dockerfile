@@ -19,6 +19,7 @@ RUN curl -L https://github.com/t-rex-tileserver/t-rex/releases/download/v0.14.3/
 
 WORKDIR /srv/trex
 COPY trex-config.toml ./trex-config.toml
+COPY static/ ./static/
 
 EXPOSE 6767
 CMD ["/usr/local/bin/t_rex", "serve", "--config", "/srv/trex/trex-config.toml"]

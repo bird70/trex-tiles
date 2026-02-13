@@ -53,3 +53,4 @@ sql = """
 [webserver]
 bind = "0.0.0.0"
 port = 6767
+static_path = "/srv/trex/static"

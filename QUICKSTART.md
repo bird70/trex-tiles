@@ -23,15 +23,10 @@ docker-compose up -d
 ./load-data.sh
 ```
 
-3. Open the built-in viewer:
-```bash
-open http://localhost:6767/
-```
-
-Or open the custom viewer:
-```bash
-open viewer.html
-```
+3. View the map:
+   - **Custom viewer**: http://localhost:6767/index.html
+   - **Built-in t-rex viewer**: http://localhost:6767/
+   - **Standalone file**: Open `viewer.html` in your browser
 
 The tiles are served at: `http://localhost:6767/riverlines/{z}/{x}/{y}.pbf`
 
@@ -52,11 +47,17 @@ Test a tile:
 curl -I http://localhost:6767/riverlines/0/0/0.pbf
 ```
 
+Test the custom viewer:
+```bash
+curl -I http://localhost:6767/index.html
+```
+
 ## Configuration
 
 The t-rex config (`app/trex-config.toml`) uses PostGIS with:
 - Zoom-based SQL queries (fewer attributes at lower zooms for performance)
 - Built-in viewer at http://localhost:6767/
+- Custom viewer served from `/srv/trex/static/`
 - Automatic simplification based on pixel width
 - Buffer zones for smooth tile boundaries
 
@@ -71,10 +72,18 @@ To remove all data including the PostGIS database:
 docker-compose down -v
 ```
 
-## Next steps
+## AWS Deployment
 
-For production AWS deployment:
-1. Use the terraform configs in `infra/terraform/`
-2. Set up RDS for PostGIS
-3. Configure CloudFront for caching
-4. Use the scripts in `scripts/` for data loading
+For production deployment to AWS:
+
+1. See `aws/README.md` for complete deployment guide
+2. The viewer in `aws/viewer.html` is ready for S3 static hosting
+3. Use `aws/deploy-viewer.sh` to deploy to S3
+4. Configure CloudFront to serve both tiles (from ALB/ECS) and viewer (from S3)
+
+Quick overview:
+- **Viewer**: S3 bucket + CloudFront
+- **Tiles**: ECS Fargate + ALB + CloudFront
+- **Data**: RDS PostGIS
+
+See terraform configs in `infra/terraform/` for infrastructure setup.

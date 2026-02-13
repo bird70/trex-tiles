@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>River Lines Vector Tiles</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            z-index: 1;
+            max-width: 200px;
+        }
+        .legend h4 { margin: 0 0 10px 0; font-size: 14px; }
+        .legend-item { 
+            display: flex; 
+            align-items: center; 
+            margin: 5px 0;
+        }
+        .legend-color { 
+            width: 30px; 
+            height: 3px; 
+            margin-right: 8px;
+            border-radius: 1px;
+        }
+        .legend-label { font-size: 11px; }
+        .info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            z-index: 1;
+        }
+        .info h3 { margin: 0 0 5px 0; font-size: 16px; }
+        .info p { margin: 5px 0; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="info">
+    <h3>River Lines</h3>
+    <p>43,896 features</p>
+    <p>Zoom to see smaller streams</p>
+</div>
+<div class="legend">
+    <h4>Relative Values (95th %ile)</h4>
+    <div class="legend-item">
+        <div class="legend-color" style="background: #d73027; height: 4px;"></div>
+        <span class="legend-label">Very High</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background: #fc8d59; height: 3px;"></div>
+        <span class="legend-label">High</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background: #fee090; height: 2px;"></div>
+        <span class="legend-label">Medium</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background: #91bfdb; height: 2px;"></div>
+        <span class="legend-label">Low</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background: #4575b4; height: 1px;"></div>
+        <span class="legend-label">Very Low</span>
+    </div>
+    <p style="margin-top: 10px; font-size: 11px; color: #666;">
+        Line width = stream order
+    </p>
+</div>
+<div id="map"></div>
+<script>
+    // CONFIGURATION: Update this with your CloudFront or ALB URL
+    const TILE_SERVER_URL = 'https://YOUR_CLOUDFRONT_DOMAIN_HERE.cloudfront.net';
+    
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: {
+            version: 8,
+            sources: {
+                'osm': {
+                    type: 'raster',
+                    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                    tileSize: 256,
+                    attribution: '© OpenStreetMap contributors'
+                },
+                'riverlines': {
+                    type: 'vector',
+                    tiles: [TILE_SERVER_URL + '/riverlines/{z}/{x}/{y}.pbf'],
+                    minzoom: 0,
+                    maxzoom: 22
+                }
+            },
+            layers: [
+                {
+                    id: 'osm',
+                    type: 'raster',
+                    source: 'osm'
+                },
+                {
+                    id: 'riverlines',
+                    type: 'line',
+                    source: 'riverlines',
+                    'source-layer': 'riverlines',
+                    // Filter by stream order based on zoom level
+                    filter: [
+                        'any',
+                        ['all', ['<=', ['zoom'], 6], ['>=', ['get', 'streamorder'], 6]],
+                        ['all', ['>', ['zoom'], 6], ['<=', ['zoom'], 8], ['>=', ['get', 'streamorder'], 5]],
+                        ['all', ['>', ['zoom'], 8], ['<=', ['zoom'], 10], ['>=', ['get', 'streamorder'], 4]],
+                        ['all', ['>', ['zoom'], 10], ['<=', ['zoom'], 12], ['>=', ['get', 'streamorder'], 3]],
+                        ['all', ['>', ['zoom'], 12], ['<=', ['zoom'], 14], ['>=', ['get', 'streamorder'], 2]],
+                        ['>', ['zoom'], 14]
+                    ],
+                    paint: {
+                        // Color by relativevalues95thpercentile (5 classes)
+                        'line-color': [
+                            'case',
+                            ['>=', ['get', 'relativevalues95thpercentile'], 0.8], '#d73027', // Very High
+                            ['>=', ['get', 'relativevalues95thpercentile'], 0.6], '#fc8d59', // High
+                            ['>=', ['get', 'relativevalues95thpercentile'], 0.4], '#fee090', // Medium
+                            ['>=', ['get', 'relativevalues95thpercentile'], 0.2], '#91bfdb', // Low
+                            '#4575b4' // Very Low (< 0.2)
+                        ],
+                        // Width by stream order
+                        'line-width': [
+                            'interpolate',
+                            ['linear'],
+                            ['get', 'streamorder'],
+                            1, ['interpolate', ['exponential', 1.5], ['zoom'], 10, 0.5, 14, 1, 18, 2],
+                            2, ['interpolate', ['exponential', 1.5], ['zoom'], 10, 0.8, 14, 1.5, 18, 3],
+                            3, ['interpolate', ['exponential', 1.5], ['zoom'], 8, 1, 12, 2, 16, 4],
+                            4, ['interpolate', ['exponential', 1.5], ['zoom'], 6, 1.2, 10, 2.5, 14, 5],
+                            5, ['interpolate', ['exponential', 1.5], ['zoom'], 4, 1.5, 8, 3, 12, 6],
+                            6, ['interpolate', ['exponential', 1.5], ['zoom'], 2, 2, 6, 4, 10, 7],
+                            7, ['interpolate', ['exponential', 1.5], ['zoom'], 0, 2.5, 4, 5, 8, 8],
+                            8, ['interpolate', ['exponential', 1.5], ['zoom'], 0, 3, 4, 6, 8, 10]
+                        ],
+                        'line-opacity': 0.85
+                    }
+                }
+            ]
+        },
+        center: [0, 0],
+        zoom: 2
+    });
+
+    map.addControl(new maplibregl.NavigationControl());
+    
+    // Add click handler to show feature properties
+    map.on('click', 'riverlines', (e) => {
+        if (e.features.length > 0) {
+            const props = e.features[0].properties;
+            const value = props.relativevalues95thpercentile;
+            let valueClass = 'N/A';
+            if (value >= 0.8) valueClass = 'Very High';
+            else if (value >= 0.6) valueClass = 'High';
+            else if (value >= 0.4) valueClass = 'Medium';
+            else if (value >= 0.2) valueClass = 'Low';
+            else if (value !== null) valueClass = 'Very Low';
+            
+            new maplibregl.Popup()
+                .setLngLat(e.lngLat)
+                .setHTML(`
+                    <strong>River Line</strong><br>
+                    Stream Order: ${props.streamorder || 'N/A'}<br>
+                    ${props.rchid ? `ID: ${props.rchid}<br>` : ''}
+                    ${value !== null ? `Value: ${value.toFixed(3)} (${valueClass})` : 'Value: N/A'}
+                `)
+                .addTo(map);
+        }
+    });
+
+    // Change cursor on hover
+    map.on('mouseenter', 'riverlines', () => {
+        map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'riverlines', () => {
+        map.getCanvas().style.cursor = '';
+    });
+</script>
+</body>
+</html>

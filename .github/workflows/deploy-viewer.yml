@@ -1,0 +1,86 @@
+name: Deploy Viewer to S3
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'aws/viewer.html'
+      - '.github/workflows/deploy-viewer.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy Viewer to S3
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update viewer with CloudFront URL
+      env:
+        CLOUDFRONT_URL: ${{ secrets.CLOUDFRONT_URL }}
+      run: |
+        if [ -n "$CLOUDFRONT_URL" ]; then
+          sed -i "s|YOUR_CLOUDFRONT_DOMAIN_HERE.cloudfront.net|$CLOUDFRONT_URL|g" aws/viewer.html
+          echo "Updated viewer with CloudFront URL: $CLOUDFRONT_URL"
+        else
+          echo "Warning: CLOUDFRONT_URL secret not set. Viewer will need manual configuration."
+        fi
+
+    - name: Deploy to S3
+      env:
+        S3_BUCKET: ${{ secrets.S3_VIEWER_BUCKET }}
+      run: |
+        if [ -z "$S3_BUCKET" ]; then
+          echo "Error: S3_VIEWER_BUCKET secret not set"
+          exit 1
+        fi
+        
+        aws s3 cp aws/viewer.html "s3://${S3_BUCKET}/index.html" \
+          --content-type "text/html" \
+          --cache-control "max-age=300" \
+          --metadata-directive REPLACE
+        
+        echo "Viewer deployed to s3://${S3_BUCKET}/index.html"
+
+    - name: Invalidate CloudFront cache
+      if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
+      env:
+        DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+      run: |
+        aws cloudfront create-invalidation \
+          --distribution-id "$DISTRIBUTION_ID" \
+          --paths "/index.html" "/"
+        echo "CloudFront cache invalidated"
+
+    - name: Output deployment URL
+      env:
+        S3_BUCKET: ${{ secrets.S3_VIEWER_BUCKET }}
+        CLOUDFRONT_URL: ${{ secrets.CLOUDFRONT_URL }}
+      run: |
+        echo "Deployment complete!"
+        if [ -n "$CLOUDFRONT_URL" ]; then
+          echo "Viewer URL: https://$CLOUDFRONT_URL/"
+        else
+          echo "S3 URL: https://${S3_BUCKET}.s3.amazonaws.com/index.html"
+        fi
