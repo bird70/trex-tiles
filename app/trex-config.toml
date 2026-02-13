@@ -1,0 +1,55 @@
+
+[service.mvt]
+viewer = true
+
+[[datasource]]
+dbconn = "postgresql://postgres:postgres@postgis:5432/gis"
+
+[grid]
+predefined = "web_mercator"
+
+[[tileset]]
+name = "riverlines"
+attribution = "River lines data"
+
+[[tileset.layer]]
+name = "riverlines"
+table_name = "riverlines"
+geometry_field = "geom"
+geometry_type = "MULTILINESTRING"
+srid = 3857
+fid_field = "fid"
+buffer_size = 10
+simplify = true
+tolerance = "!pixel_width!/2"
+
+[[tileset.layer.query]]
+minzoom = 0
+maxzoom = 6
+sql = """
+  SELECT fid, streamorder, geom 
+  FROM riverlines 
+  WHERE geom && !bbox!
+"""
+
+[[tileset.layer.query]]
+minzoom = 7
+maxzoom = 10
+sql = """
+  SELECT fid, streamorder, rchid, geom 
+  FROM riverlines 
+  WHERE geom && !bbox!
+"""
+
+[[tileset.layer.query]]
+minzoom = 11
+maxzoom = 22
+sql = """
+  SELECT fid, streamorder, rchid, relativevalues95thpercentile, geom 
+  FROM riverlines 
+  WHERE geom && !bbox!
+"""
+
+[webserver]
+bind = "0.0.0.0"
+port = 6767

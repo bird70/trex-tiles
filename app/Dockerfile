@@ -1,15 +1,24 @@
 
-# Build a small runtime image by copying t_rex from upstream into Alpine
-FROM ghcr.io/t-rex-tileserver/t-rex:latest as upstream
+FROM debian:bullseye-slim
 
-FROM alpine:3.19
-RUN apk add --no-cache libstdc++ proj gdal sqlite-libs postgresql-libs tzdata sed
-COPY --from=upstream /usr/local/bin/t_rex /usr/local/bin/t_rex
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    libgdal28 \
+    libsqlite3-0 \
+    libpq5 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install t-rex binary
+RUN curl -L https://github.com/t-rex-tileserver/t-rex/releases/download/v0.14.3/t-rex-v0.14.3-x86_64-linux-gnu.tar.gz \
+    -o /tmp/t-rex.tar.gz && \
+    tar xzf /tmp/t-rex.tar.gz -C /usr/local/bin && \
+    rm /tmp/t-rex.tar.gz && \
+    chmod +x /usr/local/bin/t_rex
 
 WORKDIR /srv/trex
-COPY trex-config.template.toml ./trex-config.template.toml
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY trex-config.toml ./trex-config.toml
 
 EXPOSE 6767
-CMD ["/entrypoint.sh"]
+CMD ["/usr/local/bin/t_rex", "serve", "--config", "/srv/trex/trex-config.toml"]

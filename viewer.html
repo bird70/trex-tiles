@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>River Lines Vector Tiles</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: {
+            version: 8,
+            sources: {
+                'osm': {
+                    type: 'raster',
+                    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                    tileSize: 256,
+                    attribution: '© OpenStreetMap contributors'
+                },
+                'riverlines': {
+                    type: 'vector',
+                    tiles: ['http://localhost:6767/riverlines/{z}/{x}/{y}.pbf'],
+                    minzoom: 0,
+                    maxzoom: 14
+                }
+            },
+            layers: [
+                {
+                    id: 'osm',
+                    type: 'raster',
+                    source: 'osm'
+                },
+                {
+                    id: 'riverlines',
+                    type: 'line',
+                    source: 'riverlines',
+                    'source-layer': 'riverlines',
+                    paint: {
+                        'line-color': [
+                            'interpolate',
+                            ['linear'],
+                            ['get', 'streamorder'],
+                            1, '#3388ff',
+                            5, '#0066cc',
+                            10, '#003d99'
+                        ],
+                        'line-width': [
+                            'interpolate',
+                            ['exponential', 1.5],
+                            ['zoom'],
+                            0, 0.5,
+                            10, 2,
+                            14, 4
+                        ]
+                    }
+                }
+            ]
+        },
+        center: [0, 0],
+        zoom: 2
+    });
+
+    map.addControl(new maplibregl.NavigationControl());
+    map.on('click','riverlines',(e)=>{
+      const f = e.features?.[0];
+      if(!f) return;
+      const id = f.properties?.rchid;
+      console.log('Clicked feature rchid:', id);
+      // fetch(`/your-api/lines/${id}`).then(r=>r.json()).then(console.log);
+    });
+</script>
+</body>
+</html>
