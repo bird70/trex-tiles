@@ -1,0 +1,58 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>t-rex + MapLibre demo</title>
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>html,body,#map{height:100%;margin:0;padding:0}</style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script>
+    const CF_DOMAIN = 'YOUR-CLOUDFRONT-DOMAIN'; // e.g., tiles.example.nz
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+        sources: {
+          lines: {
+            type: 'vector',
+            tiles: [`https://${CF_DOMAIN}/tiles/{z}/{x}/{y}.pbf`],
+            minzoom: 4,
+            maxzoom: 14
+          }
+        },
+        layers: [{
+          id: 'lines',
+          type: 'line',
+          source: 'lines',
+          'source-layer': 'lines',
+          paint: {
+            'line-color': [
+              'match', ['get','class'],
+              'A', '#e41a1c',
+              'B', '#377eb8',
+              'C', '#4daf4a',
+              /* default */ '#888'
+            ],
+            'line-width': ['interpolate',['linear'],['zoom'], 5,0.6, 10,1.5, 14,3.0]
+          }
+        }]
+      },
+      center: [174.777, -41.288], zoom: 10
+    });
+
+    map.on('click','lines',(e)=>{
+      const f = e.features?.[0];
+      if(!f) return;
+      const id = f.properties?.id;
+      console.log('Clicked feature id:', id);
+      // fetch(`/your-api/lines/${id}`).then(r=>r.json()).then(console.log);
+    });
+  </script>
+</body>
+</html>

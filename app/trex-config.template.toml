@@ -1,0 +1,32 @@
+
+[dataset]
+# PostGIS recommended for performance
+type  = "postgis"
+dbconn = "__POSTGRES_URL__"
+
+[[layer]]
+name = "lines"
+srid = 3857
+minzoom = __MINZOOM__
+maxzoom = __MAXZOOM__
+
+# Only ship id + class; generalize by zoom to keep tiles small
+query = """
+  SELECT
+    id,
+    class,
+    CASE
+      WHEN !zoom! <= 6  THEN ST_Simplify(geom_webmercator, 100)
+      WHEN !zoom! <= 9  THEN ST_Simplify(geom_webmercator, 20)
+      WHEN !zoom! <= 12 THEN ST_Simplify(geom_webmercator, 5)
+      ELSE geom_webmercator
+    END AS geom
+  FROM lines
+"""
+
+[tiles]
+path = "/tiles/{z}/{x}/{y}.pbf"
+
+[webserver]
+bind = "0.0.0.0"
+port = 6767

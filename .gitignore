@@ -1,0 +1,20 @@
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+
+# Node / web demo
+node_modules/
+
+# Python
+__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archives
+*.zip
