@@ -1,0 +1,17 @@
+---
+alt: "AWS production topology for tiles and viewer delivery"
+---
+flowchart LR
+    browser[Browser]
+    viewer[S3-hosted viewer.html\nvia deploy-viewer.sh and workflow]
+    cf[CloudFront distribution\nfor tiles]
+    alb[ALB HTTPS listener]
+    ecs[ECS Fargate\nt-rex service]
+    rds[(RDS PostGIS)]
+    gpkg[(GeoPackage in S3)]
+    s3sync[s3sync sidecar]
+    efs[(EFS /data volume)]
+
+    browser --> viewer
+    browser -->|/riverlines/{z}/{x}/{y}.pbf| cf --> alb --> ecs --> rds
+    gpkg -. optional periodic copy .-> s3sync -.-> efs -.-> ecs

@@ -1,0 +1,15 @@
+---
+alt: "Local runtime topology for docker-compose development"
+---
+flowchart LR
+    browser[Browser\nviewer.html or /index.html]
+    subgraph compose["Docker Compose"]
+        trex[t-rex container]
+        postgis[(PostGIS database)]
+    end
+    data[(data/tmpg6dthsr5.gpkg)]
+    loader[load-data.sh\nogr2ogr + indexes]
+
+    browser -->|tile requests| trex
+    trex -->|SQL on riverlines| postgis
+    data --> loader -->|import| postgis

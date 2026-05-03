@@ -1,0 +1,20 @@
+---
+alt: "GitHub Actions delivery flow for image, viewer, and infrastructure changes"
+---
+flowchart LR
+    appChanges[app/** and docker-compose.yml]
+    viewerChanges[aws/viewer.html]
+    infraChanges[infra/terraform/**]
+
+    build[build-and-push.yml]
+    deploy[deploy-viewer.yml]
+    tf[terraform.yml]
+
+    ecr[(Amazon ECR)]
+    s3[(S3 viewer bucket)]
+    cf[CloudFront invalidation]
+    aws[AWS infra\nECS, ALB, CloudFront, IAM, EFS]
+
+    appChanges --> build --> ecr
+    viewerChanges --> deploy --> s3 --> cf
+    infraChanges --> tf --> aws
